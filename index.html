@@ -6,6 +6,18 @@
 <title>Reddit Task Force</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBvgtAkNKi-sx9tZ6KQb8KnLO9eZLa4AEU",
+    authDomain: "reddit-task-force.firebaseapp.com",
+    databaseURL: "https://reddit-task-force-default-rtdb.firebaseio.com",
+    projectId: "reddit-task-force",
+    storageBucket: "reddit-task-force.firebasestorage.app",
+    messagingSenderId: "444585819165",
+    appId: "1:444585819165:web:664ed98f02125b95879af4"
+  };
+  firebase.initializeApp(firebaseConfig);
+</script>
 <style>
 :root {
   color-scheme: light;
@@ -447,18 +459,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <script>
 // ═══════════════════════════════════════════
-//  FIREBASE CONFIG
+//  FIREBASE
 // ═══════════════════════════════════════════
-const firebaseConfig = {
-  apiKey: "AIzaSyD90L98-eZsWaApoXoG7VM5uHr6ryjv-io",
-  authDomain: "reddit-task-force.firebaseapp.com",
-  databaseURL: "https://reddit-task-force-default-rtdb.firebaseio.com",
-  projectId: "reddit-task-force",
-  storageBucket: "reddit-task-force.firebasestorage.app",
-  messagingSenderId: "444585819165",
-  appId: "1:444585819165:web:664ed98f02125b95879af4"
-};
-firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 // ═══════════════════════════════════════════

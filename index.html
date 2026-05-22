@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reddit Task Force</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --primary:#6366F1; --primary-dk:#4F46E5; --primary-lt:#EEF2FF;
+  --success:#10B981; --success-lt:#ECFDF5;
+  --warn:#F59E0B; --warn-lt:#FFFBEB;
+  --danger:#EF4444; --danger-lt:#FEF2F2;
+  --c-imagen:#FF6B35; --c-imagen-lt:#FFF1EC;
+  --c-photo:#8B5CF6;  --c-photo-lt:#F5F3FF;
+  --c-video:#3B82F6;  --c-video-lt:#EFF6FF;
+  --c-hobby:#10B981;  --c-hobby-lt:#ECFDF5;
+  --g50:#F8FAFC;--g100:#F1F5F9;--g200:#E2E8F0;--g300:#CBD5E1;
+  --g400:#94A3B8;--g500:#64748B;--g600:#475569;--g700:#334155;
+  --g800:#1E293B;--g900:#0F172A;
+  --r:12px; --sh:0 1px 3px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--g50);color:var(--g800);font-size:14px;min-height:100vh}
+.app{max-width:1160px;margin:0 auto;padding:14px}
+
+/* Loading overlay */
+#loadingOverlay{position:fixed;inset:0;background:rgba(255,255,255,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:14px}
+#loadingOverlay .spin{width:36px;height:36px;border:3px solid var(--g200);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite}
+#loadingOverlay p{font-size:14px;color:var(--g500)}
+.hidden{display:none!important}
+
+/* Header */
+.hdr{background:#fff;border-radius:var(--r);padding:16px 22px;margin-bottom:12px;box-shadow:var(--sh);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.hdr h1{font-size:18px;font-weight:700;color:var(--g900);display:flex;align-items:center;gap:7px}
+.hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.stats{display:flex;gap:10px}
+.stat{background:var(--g100);border-radius:8px;padding:7px 13px;text-align:center}
+.stat .n{font-size:20px;font-weight:700;color:var(--primary)}
+.stat .l{font-size:10px;color:var(--g500);text-transform:uppercase;letter-spacing:.4px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--success);display:inline-block;box-shadow:0 0 0 0 rgba(16,185,129,.4);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.4)}50%{box-shadow:0 0 0 6px rgba(16,185,129,0)}}
+
+/* Tabs */
+.tabs{display:flex;gap:3px;background:#fff;border-radius:var(--r);padding:5px;margin-bottom:12px;box-shadow:var(--sh);overflow-x:auto}
+.tb{flex:1;min-width:fit-content;padding:7px 13px;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;background:transparent;color:var(--g500);white-space:nowrap}
+.tb.on{background:var(--primary);color:#fff}
+.tb:hover:not(.on){background:var(--g100);color:var(--g700)}
+
+/* Panels */
+.panel{display:none}.panel.on{display:block}
+
+/* Card */
+.card{background:#fff;border-radius:var(--r);padding:18px;box-shadow:var(--sh)}
+.card-title{font-size:14px;font-weight:600;color:var(--g800);margin-bottom:14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mb12{margin-bottom:12px}
+
+/* Member cards */
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px}
+.mc{background:#fff;border-radius:var(--r);padding:14px;box-shadow:var(--sh);border:1.5px solid var(--g200);transition:border-color .2s}
+.mc.done{border-color:var(--success)}
+.mhdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.mname{font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px}
+.av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:#fff;flex-shrink:0}
+.focus-chip{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.3px}
+.arow{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100);font-size:12px}
+.arow:last-of-type{border-bottom:none}
+.arow-inner{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:6px 0;border-bottom:1px solid var(--g100);width:100%}
+.arow-inner:last-of-type{border-bottom:none}
+.aname{color:var(--g500);font-size:10px;font-family:monospace}
+.aicons{display:flex;align-items:center;gap:5px}
+.ci{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px}
+.ci.done{background:var(--success-lt);color:var(--success)}
+.ci.pend{background:var(--g100);color:var(--g400)}
+.pbar{height:4px;background:var(--g100);border-radius:2px;overflow:hidden;margin-top:8px}
+.pfill{height:100%;border-radius:2px;transition:width .3s}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.b-imagen{background:var(--c-imagen-lt);color:var(--c-imagen)}
+.b-photography{background:var(--c-photo-lt);color:var(--c-photo)}
+.b-video{background:var(--c-video-lt);color:var(--c-video)}
+.b-hobby{background:var(--c-hobby-lt);color:var(--c-hobby)}
+
+/* Today banner */
+.tbanner{background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border-radius:var(--r);padding:18px 22px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.tbanner h2{font-size:16px;font-weight:700}
+.tbanner p{font-size:12px;opacity:.85;margin-top:3px}
+.day-count{background:rgba(255,255,255,.18);border-radius:8px;padding:8px 14px;text-align:center}
+.day-count .dl{font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.4px}
+.day-count .dv{font-size:18px;font-weight:700;margin-top:2px}
+
+/* Calendar */
+.cal-wrap{overflow-x:auto}
+.ctbl{width:100%;border-collapse:collapse;font-size:12px}
+.ctbl th{padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--g200);background:var(--g50)}
+.ctbl th.mhd{text-align:left;min-width:80px}
+.ctbl th.today-col{background:var(--primary-lt);color:var(--primary)}
+.ctbl td{padding:6px 5px;border-bottom:1px solid var(--g100);vertical-align:middle}
+.ctbl td.mname-cell{font-weight:600;font-size:12px;vertical-align:middle}
+.ctbl td.acct-cell{font-size:9px;font-family:monospace;color:var(--g500);white-space:nowrap;padding-left:6px}
+.ctbl td.today-col{background:#F8F7FF}
+.ctbl tr:hover td{background:var(--g50)}
+.ctbl tr:hover td.today-col{background:#F0EEFF}
+.day-badge{display:inline-flex;align-items:center;justify-content:center;padding:3px 5px;border-radius:6px;font-size:9px;font-weight:700;text-transform:uppercase;width:100%}
+.db-imagen{background:var(--c-imagen-lt);color:var(--c-imagen)}
+.db-photography{background:var(--c-photo-lt);color:var(--c-photo)}
+.db-video{background:var(--c-video-lt);color:var(--c-video)}
+.db-hobby{background:var(--c-hobby-lt);color:var(--c-hobby)}
+.post-dot{display:inline-block;width:5px;height:5px;background:var(--success);border-radius:50%;margin-left:3px;vertical-align:middle}
+
+/* Week nav */
+.wnav{display:flex;align-items:center;gap:8px}
+.nb{background:var(--g100);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.nb:hover{background:var(--g200)}
+.wlbl{font-size:12px;font-weight:600;color:var(--g700)}
+
+/* Ideas */
+.idea-gen{text-align:center;padding:24px 14px}
+.idea-cats{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+.cbt{padding:9px 16px;border-radius:18px;border:2px solid;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;background:#fff}
+.cbt:hover,.cbt.sel{transform:scale(1.04)}
+.cbt-imagen{border-color:var(--c-imagen);color:var(--c-imagen)} .cbt-imagen:hover,.cbt-imagen.sel{background:var(--c-imagen);color:#fff}
+.cbt-photography{border-color:var(--c-photo);color:var(--c-photo)} .cbt-photography:hover,.cbt-photography.sel{background:var(--c-photo);color:#fff}
+.cbt-video{border-color:var(--c-video);color:var(--c-video)} .cbt-video:hover,.cbt-video.sel{background:var(--c-video);color:#fff}
+.cbt-hobby{border-color:var(--c-hobby);color:var(--c-hobby)} .cbt-hobby:hover,.cbt-hobby.sel{background:var(--c-hobby);color:#fff}
+.idea-box{background:var(--g50);border:2px dashed var(--g200);border-radius:14px;padding:28px;margin:0 auto 18px;max-width:620px;min-height:100px;display:flex;align-items:center;justify-content:center}
+.idea-txt{font-size:16px;font-weight:500;color:var(--g700);line-height:1.55}
+.idea-ph{color:var(--g400);font-size:13px}
+.rndm-btn{background:var(--primary);color:#fff;border:none;border-radius:11px;padding:12px 26px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .15s}
+.rndm-btn:hover{background:var(--primary-dk);transform:scale(1.02)}
+.rndm-btn:active{transform:scale(.98)}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.spinning{animation:spin .4s ease}
+
+/* Forms */
+.fg{margin-bottom:12px}
+.fl{display:block;font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.fc{width:100%;padding:9px 11px;border:1.5px solid var(--g200);border-radius:7px;font-size:13px;color:var(--g800);background:#fff;transition:border-color .15s;outline:none}
+.fc:focus{border-color:var(--primary)}
+.sbtn{background:var(--primary);color:#fff;border:none;border-radius:7px;padding:11px 22px;font-size:13px;font-weight:700;cursor:pointer;width:100%;transition:all .15s}
+.sbtn:hover{background:var(--primary-dk)}
+.sbtn:disabled{opacity:.5;cursor:not-allowed}
+.sbtn.dark{background:var(--g700)}.sbtn.dark:hover{background:var(--g800)}
+.sbtn.grn{background:var(--success)}.sbtn.grn:hover{opacity:.88}
+
+/* Comment log */
+.clog-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--g100);font-size:12px}
+.clog-row:last-child{border-bottom:none}
+
+/* History */
+.htbl{width:100%;border-collapse:collapse;font-size:12px}
+.htbl th{text-align:left;padding:8px 10px;font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--g200);background:var(--g50)}
+.htbl td{padding:8px 10px;border-bottom:1px solid var(--g100);vertical-align:middle}
+.htbl tr:hover td{background:var(--g50)}
+.lnk a{color:var(--primary);text-decoration:none;font-size:11px;word-break:break-all}
+.lnk a:hover{text-decoration:underline}
+
+/* Filters */
+.fpills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.fp{padding:4px 10px;border-radius:16px;font-size:11px;font-weight:500;cursor:pointer;border:1.5px solid var(--g200);background:#fff;color:var(--g600);transition:all .15s}
+.fp.on{background:var(--primary);border-color:var(--primary);color:#fff}
+
+/* Report */
+.rp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.rp-cat{padding:11px;border-radius:8px;background:var(--g50)}
+
+/* Section header */
+.shdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.stitle{font-size:14px;font-weight:600;color:var(--g800)}
+
+/* Toast */
+.toast{position:fixed;bottom:18px;right:18px;background:var(--g900);color:#fff;padding:10px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;transform:translateY(8px);transition:all .22s;z-index:1000}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* Empty */
+.empty{text-align:center;padding:44px;color:var(--g400)}
+.empty .ic{font-size:40px;margin-bottom:8px}
+
+.info{padding:12px;background:var(--warn-lt);border-radius:8px;border-left:3px solid var(--warn);font-size:12px;color:var(--g600);line-height:1.7;margin-top:12px}
+.info strong{color:var(--g700)}
+
+@media(max-width:680px){
+  .g2{grid-template-columns:1fr}
+  .mgrid{grid-template-columns:repeat(2,1fr)}
+  .stats{gap:6px}
+}
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loadingOverlay">
+  <div class="spin"></div>
+  <p>Connecting to live database…</p>
+</div>
+
+<div class="app">
+
+<!-- HEADER -->
+<div class="hdr">
+  <div>
+    <h1>🎯 Reddit Task Force <span class="live-dot" title="Live data"></span></h1>
+    <p id="hdrDate">Loading…</p>
+  </div>
+  <div class="hdr-right">
+    <div class="stats">
+      <div class="stat"><div class="n" id="sToday">0</div><div class="l">Posts Today</div></div>
+      <div class="stat"><div class="n" id="sWeek">0</div><div class="l">This Week</div></div>
+      <div class="stat"><div class="n" id="sMonth">0</div><div class="l">This Month</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tb on" onclick="switchTab('today',this)">📅 Today</button>
+  <button class="tb" onclick="switchTab('calendar',this)">🗓 Schedule</button>
+  <button class="tb" onclick="switchTab('ideas',this)">💡 Ideas</button>
+  <button class="tb" onclick="switchTab('log',this)">📝 Log Post</button>
+  <button class="tb" onclick="switchTab('history',this)">📋 History</button>
+  <button class="tb" onclick="switchTab('report',this)">📊 Report</button>
+</div>
+
+<!-- ══════════ TODAY ══════════ -->
+<div class="panel on" id="panel-today">
+  <div class="tbanner">
+    <div>
+      <h2>👋 Good day, Team!</h2>
+      <p id="todaySub">Stay consistent — build that karma!</p>
+    </div>
+    <div class="day-count">
+      <div class="dl">Logged Today</div>
+      <div class="dv" id="todayCount">— posts</div>
+    </div>
+  </div>
+  <div class="mgrid" id="memberCards"></div>
+</div>
+
+<!-- ══════════ CALENDAR ══════════ -->
+<div class="panel" id="panel-calendar">
+  <div class="card">
+    <div class="shdr">
+      <span class="stitle">🗓 Team Schedule — Per Account</span>
+      <div class="wnav">
+        <button class="nb" onclick="changeWeek(-1)">←</button>
+        <span class="wlbl" id="wkLabel">—</span>
+        <button class="nb" onclick="changeWeek(1)">→</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="badge b-imagen">🔮 Imagen AI</span>
+      <span class="badge b-photography">📷 Photography</span>
+      <span class="badge b-video">🎬 Video</span>
+      <span class="badge b-hobby">🌿 Hobby</span>
+    </div>
+    <div class="cal-wrap"><table class="ctbl" id="calTable"></table></div>
+    <div class="info" style="margin-top:14px">
+      📌 Each account has its own focus — building different Reddit profiles. Green dot = post already logged. Weekly per-account: 2× Imagen · 1× Photo · 1× Video · 3× Hobby.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ IDEAS ══════════ -->
+<div class="panel" id="panel-ideas">
+  <div class="card">
+    <div class="idea-gen">
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">💡 Post Idea Generator</h2>
+      <p style="color:var(--g500);margin-bottom:20px;font-size:13px">Pick a category, then hit the button for a fresh idea!</p>
+      <div class="idea-cats">
+        <button class="cbt cbt-imagen"     id="cat-imagen"     onclick="selCat('imagen')">🔮 Give me an idea for Imagen AI</button>
+        <button class="cbt cbt-video"       id="cat-video"       onclick="selCat('video')">🎬 Give me an idea for Video</button>
+        <button class="cbt cbt-photography" id="cat-photography" onclick="selCat('photography')">📷 Give me an idea for Photo</button>
+        <button class="cbt cbt-hobby"       id="cat-hobby"       onclick="selCat('hobby')">🌿 Give me an idea for a Hobby</button>
+      </div>
+      <div class="idea-box" id="ideaBox">
+        <p class="idea-ph">← Select a category, then click below ✨</p>
+      </div>
+      <button class="rndm-btn" onclick="genIdea()">
+        <span id="diceIco">🎲</span> Randomize &amp; Give Me an Idea!
+      </button>
+      <p id="catLbl" style="margin-top:10px;font-size:12px;color:var(--g400)">No category selected</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ LOG POST ══════════ -->
+<div class="panel" id="panel-log">
+  <div class="g2">
+
+    <div class="card">
+      <h3 class="card-title">📝 Log a Post</h3>
+      <div class="fg">
+        <label class="fl">Team Member</label>
+        <select class="fc" id="lMember" onchange="populateAccounts('lAccount',this.value);suggestCategory()">
+          <option value="">— Select member —</option>
+          <option>Cynthia</option><option>Richu</option><option>Laurie</option>
+          <option>Tiffany</option><option>Alicia</option><option>Vanessa</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">Account</label>
+        <select class="fc" id="lAccount" onchange="suggestCategory()">
+          <option value="">— Select member first —</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">Post Category <span id="suggestLbl" style="font-size:10px;color:var(--c-imagen);font-weight:400;text-transform:none;letter-spacing:0"></span></label>
+        <select class="fc" id="lCat">
+          <option value="imagen">🔮 Imagen AI</option>
+          <option value="photography">📷 Photography</option>
+          <option value="video">🎬 Video</option>
+          <option value="hobby">🌿 Hobby</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">Reddit Post URL</label>
+        <input type="url" class="fc" id="lLink" placeholder="https://reddit.com/r/…">
+      </div>
+      <div class="fg">
+        <label class="fl">Date</label>
+        <input type="date" class="fc" id="lDate">
+      </div>
+      <div class="fg">
+        <label class="fl">Description (optional)</label>
+        <input type="text" class="fc" id="lDesc" placeholder="Brief description of the post">
+      </div>
+      <button class="sbtn" id="logPostBtn" onclick="logPost()">✓ Log This Post</button>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">💬 Log Comments</h3>
+      <div class="fg">
+        <label class="fl">Team Member</label>
+        <select class="fc" id="cMember" onchange="populateAccounts('cAccount',this.value)">
+          <option value="">— Select member —</option>
+          <option>Cynthia</option><option>Richu</option><option>Laurie</option>
+          <option>Tiffany</option><option>Alicia</option><option>Vanessa</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">Account</label>
+        <select class="fc" id="cAccount">
+          <option value="">— Select member first —</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">Date</label>
+        <input type="date" class="fc" id="cDate">
+      </div>
+      <button class="sbtn dark" id="logComBtn" onclick="logComments()">✓ Mark Comments as Done</button>
+      <div class="info">
+        <strong>📌 Daily goal:</strong> Each account makes 5–10 comments/day to build karma before posting in <strong>r/ImagenApp</strong>.
+      </div>
+      <div style="margin-top:14px">
+        <p style="font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Recent Comment Logs</p>
+        <div id="recentComs" style="max-height:200px;overflow-y:auto;border:1px solid var(--g200);border-radius:8px"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════ HISTORY ══════════ -->
+<div class="panel" id="panel-history">
+  <div class="card">
+    <div class="shdr">
+      <span class="stitle">📋 Post History</span>
+      <span style="font-size:11px;color:var(--g400)">Updates in real time 🔴</span>
+    </div>
+    <div class="fpills">
+      <span class="fp on" onclick="filterH('all',this)">All</span>
+      <span class="fp" onclick="filterH('imagen',this)">🔮 Imagen</span>
+      <span class="fp" onclick="filterH('photography',this)">📷 Photo</span>
+      <span class="fp" onclick="filterH('video',this)">🎬 Video</span>
+      <span class="fp" onclick="filterH('hobby',this)">🌿 Hobby</span>
+      <span class="fp" onclick="filterH('cynthia',this)">Cynthia</span>
+      <span class="fp" onclick="filterH('richu',this)">Richu</span>
+      <span class="fp" onclick="filterH('laurie',this)">Laurie</span>
+      <span class="fp" onclick="filterH('tiffany',this)">Tiffany</span>
+      <span class="fp" onclick="filterH('alicia',this)">Alicia</span>
+      <span class="fp" onclick="filterH('vanessa',this)">Vanessa</span>
+    </div>
+    <div id="histBox"></div>
+  </div>
+</div>
+
+<!-- ══════════ REPORT ══════════ -->
+<div class="panel" id="panel-report">
+  <div class="g2 mb12">
+    <div class="card">
+      <h3 class="card-title">📊 Posts by Category</h3>
+      <div id="rpCats"></div>
+    </div>
+    <div class="card">
+      <h3 class="card-title">👥 Member Progress</h3>
+      <div id="rpMembers"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="shdr">
+      <span class="stitle">📋 Manager Report</span>
+      <select class="fc" id="rpPeriod" onchange="renderReport()" style="width:auto;padding:6px 10px">
+        <option value="week">This Week</option>
+        <option value="month">This Month</option>
+        <option value="all">All Time</option>
+      </select>
+    </div>
+    <div id="rpPreview" style="background:var(--g50);border-radius:8px;padding:14px;font-size:11px;font-family:monospace;white-space:pre-wrap;max-height:280px;overflow-y:auto;color:var(--g700);line-height:1.8">
+      Click "Generate Report" to preview.
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="sbtn" onclick="genReport()" style="flex:1">📊 Generate Report</button>
+      <button class="sbtn grn" onclick="copyReport()" style="width:auto;padding:11px 18px">📋 Copy</button>
+    </div>
+  </div>
+</div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  FIREBASE CONFIG
+// ═══════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyD90L98-eZsWaApoXoG7VM5uHr6ryjv-io",
+  authDomain: "reddit-task-force.firebaseapp.com",
+  databaseURL: "https://reddit-task-force-default-rtdb.firebaseio.com",
+  projectId: "reddit-task-force",
+  storageBucket: "reddit-task-force.firebasestorage.app",
+  messagingSenderId: "444585819165",
+  appId: "1:444585819165:web:664ed98f02125b95879af4"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ═══════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════
+const MEMBERS = ['Cynthia','Richu','Laurie','Tiffany','Alicia','Vanessa'];
+const ACCOUNTS = {
+  Cynthia: ['u/AppointmentLucky3894','u/Decent_Platypus_7342'],
+  Richu:   ['u/Difficult-Molasses35','u/Longjumping-Bed-9528'],
+  Laurie:  ['TBD 1','TBD 2'],
+  Tiffany: ['u/No_Parfait_2104','u/tingnsmiles'],
+  Alicia:  ['u/alilexplo108','u/somasuryagnilochana'],
+  Vanessa: ['u/ConfidentWind1778','u/Trick_Note3848'],
+};
+const COLORS = {
+  Cynthia:'#6366F1', Richu:'#EC4899', Laurie:'#F59E0B',
+  Tiffany:'#10B981', Alicia:'#3B82F6', Vanessa:'#F97316',
+};
+const CAT = {
+  imagen:      {label:'🔮 Imagen AI',   short:'Imagen', color:'#FF6B35', cls:'b-imagen',  dcls:'db-imagen'},
+  photography: {label:'📷 Photography', short:'Photo',  color:'#8B5CF6', cls:'b-photography', dcls:'db-photography'},
+  video:       {label:'🎬 Video',       short:'Video',  color:'#3B82F6', cls:'b-video',   dcls:'db-video'},
+  hobby:       {label:'🌿 Hobby',       short:'Hobby',  color:'#10B981', cls:'b-hobby',   dcls:'db-hobby'},
+};
+const BASE = ['imagen','photography','hobby','imagen','video','hobby','hobby'];
+
+const IDEAS = {
+  imagen:[
+    "Share a stunning before/after photo edited with Imagen AI — show the transformation!",
+    "Write a beginner's guide: 'How I started using AI to edit photos in under 10 minutes'",
+    "Post: 'What's your favorite Imagen AI feature and why?' — spark discussion",
+    "Share a creative project you completed using Imagen AI's tools",
+    "Tutorial: How to remove backgrounds perfectly with Imagen AI",
+    "Showcase a portrait you enhanced using Imagen AI's retouching features",
+    "Ask: 'What would you like to see added to Imagen AI next?'",
+    "Share a travel photo rescued or enhanced with AI editing",
+    "Post: 'My top 3 Imagen AI shortcuts that save me 20 minutes a day'",
+    "Share a product photo and the AI edit that made it pop",
+    "Review: Why Imagen AI is my go-to for client photo delivery",
+    "Side-by-side: phone photo vs. Imagen AI edited version",
+    "How AI editing has changed your photography workflow",
+    "Tutorial: Studio-quality results from natural light photos using AI",
+    "Ask: 'Has anyone used Imagen AI for black and white photo restoration?'",
+    "Share 3 ways Imagen AI saved hours on a recent project",
+    "Ask: 'What's the hardest edit you've pulled off with Imagen AI?'",
+  ],
+  photography:[
+    "Share your best tip for shooting in low light conditions",
+    "Film vs. digital — which do you prefer and why?",
+    "Share the story behind your favorite photo you've ever taken",
+    "Ask: 'Best mirrorless camera under $2,000 right now?'",
+    "Share 5 composition rules that transformed your photography",
+    "A photography mistake that taught you an important lesson",
+    "Ask: 'What's your go-to lens for street photography?'",
+    "A photo that required many attempts — what you finally learned",
+    "Is post-processing cheating, or part of modern photography?",
+    "Share your camera bag — what's essential for your shoots?",
+    "Tips for photographing pets or kids who won't stay still",
+    "What's the most overrated photography technique right now?",
+    "Your favorite photography location and what makes it special",
+    "Ask: 'Shooting mode — Manual, Aperture Priority, or Auto?'",
+    "Share a photo you almost deleted but are now proud of",
+    "Instagram vs. Flickr vs. 500px — where do you share your work?",
+  ],
+  video:[
+    "Your video editing workflow — what software do you swear by?",
+    "Ask: 'Best affordable microphone for YouTube videos?'",
+    "Your journey from amateur to semi-professional videographer",
+    "Smartphone vs. camera for social media content — which wins?",
+    "Your lighting setup for indoor video recording on a budget",
+    "DaVinci Resolve vs. Premiere Pro — which and why?",
+    "A color grading technique that dramatically improved your videos",
+    "Is vertical video (9:16) the future of content creation?",
+    "Tips for filming solo — how do you manage everything yourself?",
+    "The biggest mistake you made in your first video project",
+    "Ask: 'What frame rate do you shoot for a cinematic look?'",
+    "Why sound quality matters more than video quality",
+    "Short-form (Reels/TikTok) vs. long-form YouTube — your take?",
+    "A creative B-roll technique that always gets compliments",
+    "Ask: 'How do you deal with wind noise when filming outdoors?'",
+    "The gear you wish you had bought first when starting out",
+  ],
+  hobby:[
+    "Share a recipe you've been obsessing over lately",
+    "Ask: 'Favorite podcast for your commute?'",
+    "A book that genuinely changed how you think about something",
+    "A local hiking trail you discovered — what made it special?",
+    "What hobby surprised you with how much you enjoy it?",
+    "Your morning routine and the one habit that made the biggest difference",
+    "Coffee vs. tea — what's your perfect morning order?",
+    "A skill you've been learning and your progress so far",
+    "Ask: 'Best board game or card game everyone should try?'",
+    "A home organization tip that actually worked for you",
+    "Your fitness routine — what keeps you motivated?",
+    "Last museum, gallery, or cultural spot you visited?",
+    "A travel destination on your bucket list and why",
+    "Cooking at home vs. eating out — how do you balance it?",
+    "A weekend project you tackled and what you learned",
+    "Your favorite way to disconnect from screens and recharge",
+    "What's one thing you do every week that's just for you?",
+    "A local hidden gem — restaurant, shop, or park — that deserves more love",
+  ],
+};
+
+// ═══════════════════════════════════════════
+//  STATE (now from Firebase, not localStorage)
+// ═══════════════════════════════════════════
+let posts    = [];  // live from Firebase
+let comLogs  = [];  // live from Firebase
+let dataLoaded = {posts: false, comments: false};
+let wkOffset = 0;
+let curFilt  = 'all';
+let selCatVal = null;
+let lastIdx  = {imagen:-1,photography:-1,video:-1,hobby:-1};
+let rpTxt    = '';
+let activeTab = 'today';
+
+// ═══════════════════════════════════════════
+//  DATE UTILS
+// ═══════════════════════════════════════════
+function iso(d){ return d.toISOString().split('T')[0] }
+function today(){ return iso(new Date()) }
+function weekNum(d){
+  const dt=new Date(d); dt.setHours(0,0,0,0);
+  dt.setDate(dt.getDate()+3-(dt.getDay()+6)%7);
+  const w1=new Date(dt.getFullYear(),0,4);
+  return 1+Math.round(((dt-w1)/86400000-3+(w1.getDay()+6)%7)/7);
+}
+function weekStart(off=0){
+  const d=new Date(), day=d.getDay();
+  const diff=d.getDate()-day+(day===0?-6:1);
+  const m=new Date(d.setDate(diff+off*7)); m.setHours(0,0,0,0); return m;
+}
+function fmtShort(d){ return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) }
+function fmtLong(d){ return d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) }
+function typeFor(date, mi, ai){
+  const wk=weekNum(date);
+  const off=(mi*2+(ai||0)+wk)%7;
+  const dow=date.getDay()===0?6:date.getDay()-1;
+  return BASE[(dow+off)%7];
+}
+
+// ═══════════════════════════════════════════
+//  FIREBASE LISTENERS
+// ═══════════════════════════════════════════
+function checkLoaded(){
+  if(dataLoaded.posts && dataLoaded.comments){
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    refreshActiveTab();
+  }
+}
+
+db.ref('posts').on('value', snap => {
+  posts = [];
+  snap.forEach(child => {
+    posts.unshift({ firebaseKey: child.key, ...child.val() });
+  });
+  dataLoaded.posts = true;
+  checkLoaded();
+  refreshActiveTab();
+});
+
+db.ref('comments').on('value', snap => {
+  comLogs = [];
+  snap.forEach(child => {
+    comLogs.unshift({ firebaseKey: child.key, ...child.val() });
+  });
+  dataLoaded.comments = true;
+  checkLoaded();
+  refreshActiveTab();
+});
+
+function refreshActiveTab(){
+  if(activeTab==='today')   renderToday();
+  if(activeTab==='calendar') renderCalendar();
+  if(activeTab==='history') renderHistory();
+  if(activeTab==='report')  renderReport();
+  if(activeTab==='log')     renderRecentComs();
+  updateStats();
+}
+
+// ═══════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════
+function toast(msg, ms=2800){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), ms);
+}
+function switchTab(tab, btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('panel-'+tab).classList.add('on');
+  btn.classList.add('on');
+  activeTab=tab;
+  refreshActiveTab();
+}
+function populateAccounts(selId, member){
+  const sel=document.getElementById(selId);
+  sel.innerHTML='';
+  if(!member||!ACCOUNTS[member]){sel.innerHTML='<option value="">— Select member first —</option>';return;}
+  ACCOUNTS[member].forEach((acc,i)=>{
+    const o=document.createElement('option');
+    o.value=String(i+1); o.textContent=`Account ${i+1}: ${acc}`;
+    sel.appendChild(o);
+  });
+}
+function suggestCategory(){
+  const member=document.getElementById('lMember').value;
+  const account=document.getElementById('lAccount').value;
+  const lbl=document.getElementById('suggestLbl');
+  if(!member||!account){lbl.textContent='';return;}
+  const mi=MEMBERS.indexOf(member);
+  const ai=parseInt(account)-1;
+  const type=typeFor(new Date(),mi,ai);
+  document.getElementById('lCat').value=type;
+  lbl.textContent=`← today's suggested focus`;
+  lbl.style.color=CAT[type].color;
+}
+
+// ═══════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════
+function updateStats(){
+  const t=today();
+  const ws=iso(weekStart()), we=iso(new Date(weekStart().getTime()+6*86400000)), sm=t.slice(0,7);
+  document.getElementById('sToday').textContent=posts.filter(p=>p.date===t).length;
+  document.getElementById('sWeek').textContent=posts.filter(p=>p.date>=ws&&p.date<=we).length;
+  document.getElementById('sMonth').textContent=posts.filter(p=>p.date.startsWith(sm)).length;
+}
+
+// ═══════════════════════════════════════════
+//  TODAY
+// ═══════════════════════════════════════════
+function renderToday(){
+  const t=today(), now=new Date();
+  document.getElementById('hdrDate').textContent=fmtLong(now);
+  document.getElementById('todaySub').textContent=fmtLong(now)+' — Stay consistent!';
+  const cnt=posts.filter(p=>p.date===t).length;
+  document.getElementById('todayCount').textContent=cnt+' post'+(cnt!==1?'s':'')+' logged';
+  const grid=document.getElementById('memberCards');
+  grid.innerHTML='';
+  MEMBERS.forEach((name,idx)=>{
+    const t1=typeFor(now,idx,0), t2=typeFor(now,idx,1);
+    const c1=CAT[t1], c2=CAT[t2];
+    const mp=posts.filter(p=>p.date===t&&p.member===name);
+    const a1p=mp.filter(p=>p.account==='1').length;
+    const a2p=mp.filter(p=>p.account==='2').length;
+    const done=a1p>=1&&a2p>=1;
+    const mc=comLogs.filter(c=>c.date===t&&c.member===name);
+    const a1c=mc.some(c=>c.account==='1');
+    const a2c=mc.some(c=>c.account==='2');
+    const accs=ACCOUNTS[name];
+    const card=document.createElement('div');
+    card.className='mc'+(done?' done':'');
+    card.innerHTML=`
+      <div class="mhdr">
+        <div class="mname"><div class="av" style="background:${COLORS[name]}">${name[0]}</div>${name}</div>
+        <span>${done?'✅':'⏳'}</span>
+      </div>
+      <div class="arow-inner">
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+          <span class="aname">${accs[0]}</span>
+          <div class="aicons">
+            <span class="ci ${a1c?'done':'pend'}" title="Comments">${a1c?'💬':'○'}</span>
+            <span class="ci ${a1p>=1?'done':'pend'}" title="Post">${a1p>=1?'✓':'○'}</span>
+          </div>
+        </div>
+        <span class="focus-chip" style="background:${c1.color}20;color:${c1.color}">${c1.label}</span>
+      </div>
+      <div class="arow-inner">
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+          <span class="aname">${accs[1]}</span>
+          <div class="aicons">
+            <span class="ci ${a2c?'done':'pend'}" title="Comments">${a2c?'💬':'○'}</span>
+            <span class="ci ${a2p>=1?'done':'pend'}" title="Post">${a2p>=1?'✓':'○'}</span>
+          </div>
+        </div>
+        <span class="focus-chip" style="background:${c2.color}20;color:${c2.color}">${c2.label}</span>
+      </div>
+      <div class="pbar">
+        <div class="pfill" style="width:${Math.min((a1p+a2p)/2*100,100)}%;background:${done?'var(--success)':COLORS[name]}"></div>
+      </div>
+      <p style="font-size:10px;color:var(--g400);margin-top:4px;text-align:right">${a1p+a2p}/2 posts</p>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════════════
+//  CALENDAR
+// ═══════════════════════════════════════════
+function renderCalendar(){
+  const monday=weekStart(wkOffset);
+  const sunday=new Date(monday.getTime()+6*86400000);
+  const t=today();
+  document.getElementById('wkLabel').textContent=
+    wkOffset===0?`This week: ${fmtShort(monday)} – ${fmtShort(sunday)}`:`${fmtShort(monday)} – ${fmtShort(sunday)}`;
+  const DAY=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const days=Array.from({length:7},(_,i)=>new Date(monday.getTime()+i*86400000));
+  let html=`<thead><tr><th class="mhd">Member</th><th style="font-size:9px;min-width:100px">Account</th>`;
+  days.forEach((d,i)=>{
+    const isT=iso(d)===t;
+    html+=`<th class="${isT?'today-col':''}">${DAY[i]}<br><span style="font-size:9px;font-weight:400;color:${isT?'var(--primary)':'var(--g400)'}">${d.getDate()}</span></th>`;
+  });
+  html+=`</tr></thead><tbody>`;
+  MEMBERS.forEach((name,mi)=>{
+    const accs=ACCOUNTS[name];
+    [0,1].forEach(ai=>{
+      html+=`<tr${ai===1?' style="border-bottom:2px solid var(--g200)"':''}>`;
+      if(ai===0) html+=`<td class="mname-cell" rowspan="2" style="border-bottom:2px solid var(--g200)"><div style="display:flex;align-items:center;gap:5px"><div class="av" style="background:${COLORS[name]};width:20px;height:20px;font-size:8px">${name[0]}</div>${name}</div></td>`;
+      html+=`<td class="acct-cell" style="${ai===1?'border-bottom:2px solid var(--g200)':''}">${accs[ai]}</td>`;
+      days.forEach(d=>{
+        const diso=iso(d), isT=diso===t;
+        const type=typeFor(d,mi,ai), ci=CAT[type];
+        const pCount=posts.filter(p=>p.date===diso&&p.member===name&&p.account===String(ai+1)).length;
+        const dot=pCount>0?`<span class="post-dot" title="${pCount} logged"></span>`:'';
+        html+=`<td class="${isT?'today-col':''}" style="${ai===1?'border-bottom:2px solid var(--g200)':''}"><span class="day-badge ${ci.dcls}">${ci.short}</span>${dot}</td>`;
+      });
+      html+=`</tr>`;
+    });
+  });
+  html+=`</tbody>`;
+  document.getElementById('calTable').innerHTML=html;
+}
+function changeWeek(dir){ wkOffset+=dir; renderCalendar(); }
+
+// ═══════════════════════════════════════════
+//  IDEAS
+// ═══════════════════════════════════════════
+function selCat(cat){
+  selCatVal=cat;
+  document.querySelectorAll('.cbt').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('cat-'+cat).classList.add('sel');
+  document.getElementById('catLbl').textContent='Category: '+CAT[cat].label;
+  document.getElementById('ideaBox').innerHTML='<p class="idea-ph">Click "Randomize & Give Me an Idea!" ✨</p>';
+}
+function genIdea(){
+  if(!selCatVal){toast('⚠️ Please select a category first!');return;}
+  const ic=document.getElementById('diceIco');
+  ic.classList.add('spinning'); setTimeout(()=>ic.classList.remove('spinning'),400);
+  const pool=IDEAS[selCatVal]; let idx;
+  do{idx=Math.floor(Math.random()*pool.length);}while(idx===lastIdx[selCatVal]&&pool.length>1);
+  lastIdx[selCatVal]=idx;
+  document.getElementById('ideaBox').innerHTML=`<div><div style="font-size:10px;font-weight:700;color:${CAT[selCatVal].color};text-transform:uppercase;letter-spacing:.4px;margin-bottom:9px">${CAT[selCatVal].label}</div><p class="idea-txt">"${pool[idx]}"</p></div>`;
+}
+
+// ═══════════════════════════════════════════
+//  LOG POST — writes to Firebase
+// ═══════════════════════════════════════════
+function logPost(){
+  const member=document.getElementById('lMember').value;
+  const account=document.getElementById('lAccount').value;
+  const category=document.getElementById('lCat').value;
+  const link=document.getElementById('lLink').value.trim();
+  const date=document.getElementById('lDate').value;
+  const desc=document.getElementById('lDesc').value.trim();
+  if(!member){toast('⚠️ Please select a team member');return;}
+  if(!account){toast('⚠️ Please select an account');return;}
+  if(!link){toast('⚠️ Please enter a Reddit URL');return;}
+  if(!date){toast('⚠️ Please select a date');return;}
+  if(!link.startsWith('http')){toast('⚠️ URL must start with http');return;}
+
+  const btn=document.getElementById('logPostBtn');
+  btn.disabled=true; btn.textContent='Saving…';
+
+  const acctName=ACCOUNTS[member][parseInt(account)-1];
+  const entry={member, account, acctName, category, link, date, desc:desc||'—', logged:new Date().toISOString()};
+
+  db.ref('posts').push(entry)
+    .then(()=>{
+      toast(`✅ Post logged for ${member} (${acctName})`);
+      document.getElementById('lLink').value='';
+      document.getElementById('lDesc').value='';
+      document.getElementById('lMember').value='';
+      document.getElementById('lAccount').innerHTML='<option value="">— Select member first —</option>';
+      document.getElementById('suggestLbl').textContent='';
+    })
+    .catch(e=>toast('❌ Error saving: '+e.message))
+    .finally(()=>{btn.disabled=false; btn.textContent='✓ Log This Post';});
+}
+
+// ═══════════════════════════════════════════
+//  LOG COMMENTS — writes to Firebase
+// ═══════════════════════════════════════════
+function logComments(){
+  const member=document.getElementById('cMember').value;
+  const account=document.getElementById('cAccount').value;
+  const date=document.getElementById('cDate').value;
+  if(!member){toast('⚠️ Please select a team member');return;}
+  if(!account){toast('⚠️ Please select an account');return;}
+  if(!date){toast('⚠️ Please select a date');return;}
+
+  // Check duplicate
+  const dup=comLogs.find(c=>c.member===member&&c.account===account&&c.date===date);
+  if(dup){toast('ℹ️ Comments already logged for this account on this date');return;}
+
+  const btn=document.getElementById('logComBtn');
+  btn.disabled=true; btn.textContent='Saving…';
+
+  const acctName=ACCOUNTS[member][parseInt(account)-1];
+  const entry={member, account, acctName, date, logged:new Date().toISOString()};
+
+  db.ref('comments').push(entry)
+    .then(()=>{
+      toast(`✅ Comments marked done for ${member} (${acctName})`);
+      document.getElementById('cMember').value='';
+      document.getElementById('cAccount').innerHTML='<option value="">— Select member first —</option>';
+    })
+    .catch(e=>toast('❌ Error saving: '+e.message))
+    .finally(()=>{btn.disabled=false; btn.textContent='✓ Mark Comments as Done';});
+}
+
+function renderRecentComs(){
+  const box=document.getElementById('recentComs');
+  if(!box)return;
+  const recent=comLogs.slice(0,12);
+  if(recent.length===0){
+    box.innerHTML='<div style="padding:14px;text-align:center;color:var(--g400);font-size:12px">No comments logged yet</div>'; return;
+  }
+  box.innerHTML=recent.map(c=>`
+    <div class="clog-row">
+      <div style="display:flex;align-items:center;gap:7px">
+        <div class="av" style="background:${COLORS[c.member]};width:22px;height:22px;font-size:9px">${c.member[0]}</div>
+        <div>
+          <div style="font-weight:600;font-size:12px">${c.member}</div>
+          <div style="font-size:10px;color:var(--g500);font-family:monospace">${c.acctName}</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;color:var(--g500)">${c.date}</div>
+        <div style="font-size:10px;color:var(--success);font-weight:700">💬 Done</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════
+//  HISTORY
+// ═══════════════════════════════════════════
+function renderHistory(filt){
+  filt=filt||curFilt;
+  const box=document.getElementById('histBox');
+  let filtered=[...posts];
+  if(filt!=='all') filtered=filtered.filter(p=>p.category===filt||p.member.toLowerCase()===filt);
+  if(filtered.length===0){
+    box.innerHTML=`<div class="empty"><div class="ic">📭</div><p>No posts logged yet${filt!=='all'?' for this filter':''}.</p><p style="margin-top:6px;font-size:12px">Use the "Log Post" tab to record activity.</p></div>`; return;
+  }
+  const tbl=document.createElement('table');
+  tbl.className='htbl';
+  tbl.innerHTML=`
+    <thead><tr>
+      <th>Date</th><th>Member</th><th>Account</th><th>Category</th><th>Description</th><th>Link</th><th></th>
+    </tr></thead>
+    <tbody>${filtered.map(p=>`
+      <tr>
+        <td style="white-space:nowrap;color:var(--g600)">${p.date}</td>
+        <td><div style="display:flex;align-items:center;gap:5px">
+          <div class="av" style="background:${COLORS[p.member]};width:20px;height:20px;font-size:8px">${p.member[0]}</div>${p.member}
+        </div></td>
+        <td style="font-family:monospace;font-size:10px;color:var(--g500)">${p.acctName||'Acc '+p.account}</td>
+        <td><span class="badge ${CAT[p.category].cls}">${CAT[p.category].label}</span></td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--g600)">${p.desc}</td>
+        <td class="lnk"><a href="${p.link}" target="_blank" rel="noopener">${p.link.length>36?p.link.slice(0,36)+'…':p.link}</a></td>
+        <td><button onclick="deletePost('${p.firebaseKey}')" style="background:none;border:none;cursor:pointer;color:var(--g300);font-size:17px" title="Delete">×</button></td>
+      </tr>`).join('')}
+    </tbody>`;
+  box.innerHTML=''; box.appendChild(tbl);
+}
+function filterH(filt,el){
+  curFilt=filt;
+  document.querySelectorAll('.fp').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on'); renderHistory(filt);
+}
+function deletePost(key){
+  if(!confirm('Delete this post?'))return;
+  db.ref('posts/'+key).remove()
+    .then(()=>toast('🗑 Post deleted'))
+    .catch(e=>toast('❌ '+e.message));
+}
+
+// ═══════════════════════════════════════════
+//  REPORT
+// ═══════════════════════════════════════════
+function getFiltered(){
+  const period=document.getElementById('rpPeriod').value;
+  const t=today(), sm=t.slice(0,7);
+  const ws=iso(weekStart()), we=iso(new Date(weekStart().getTime()+6*86400000));
+  if(period==='week')  return{list:posts.filter(p=>p.date>=ws&&p.date<=we),label:`Week of ${ws} to ${we}`};
+  if(period==='month') return{list:posts.filter(p=>p.date.startsWith(sm)),label:`Month of ${new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'})}`};
+  return{list:[...posts],label:'All Time'};
+}
+function renderReport(){
+  const{list}=getFiltered();
+  const period=document.getElementById('rpPeriod').value;
+  const targets={week:14,month:60,all:null};
+  const target=targets[period];
+  const cats=['imagen','photography','video','hobby'];
+  document.getElementById('rpCats').innerHTML=`
+    <div class="rp-grid">
+      ${cats.map(c=>{const n=list.filter(p=>p.category===c).length;return`<div class="rp-cat" style="border-left:3px solid ${CAT[c].color}"><div style="font-size:10px;color:var(--g500);text-transform:uppercase;letter-spacing:.4px">${CAT[c].label}</div><div style="font-size:22px;font-weight:700;color:${CAT[c].color}">${n}</div><div style="font-size:10px;color:var(--g400)">posts</div></div>`;}).join('')}
+    </div>
+    <div style="padding:11px;border-radius:8px;background:var(--primary-lt);margin-top:8px"><div style="font-size:10px;color:var(--primary);text-transform:uppercase;font-weight:700">Total Posts</div><div style="font-size:28px;font-weight:700;color:var(--primary)">${list.length}</div></div>`;
+  document.getElementById('rpMembers').innerHTML=MEMBERS.map(name=>{
+    const cnt=list.filter(p=>p.member===name).length;
+    const pct=target?Math.min(Math.round(cnt/target*100),100):null;
+    return`<div style="margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px"><div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600"><div class="av" style="background:${COLORS[name]};width:20px;height:20px;font-size:8px">${name[0]}</div>${name}</div><span style="font-size:12px;color:var(--g600)">${cnt}${target?'/'+target:''} posts</span></div>${target?`<div class="pbar"><div class="pfill" style="width:${pct}%;background:${COLORS[name]}"></div></div><div style="font-size:10px;color:var(--g400);text-align:right;margin-top:2px">${pct}%</div>`:''}</div>`;
+  }).join('');
+}
+function genReport(){
+  const{list,label}=getFiltered();
+  const lines=[];
+  lines.push('REDDIT TASK FORCE — ACTIVITY REPORT');
+  lines.push('='.repeat(54));
+  lines.push(`Period : ${label}`);
+  lines.push(`Created: ${fmtLong(new Date())}`);
+  lines.push('');lines.push('OVERVIEW');lines.push('-'.repeat(30));
+  lines.push(`Total Posts : ${list.length}`);
+  ['imagen','photography','video','hobby'].forEach(c=>lines.push(`  ${CAT[c].label.padEnd(24)}: ${list.filter(p=>p.category===c).length}`));
+  lines.push('');lines.push('MEMBER BREAKDOWN');lines.push('-'.repeat(30));
+  MEMBERS.forEach(name=>{
+    const mp=list.filter(p=>p.member===name);
+    lines.push(`${name} — ${mp.length} posts`);
+    ['imagen','photography','video','hobby'].forEach(c=>{const n=mp.filter(p=>p.category===c).length;if(n>0)lines.push(`   ${CAT[c].label}: ${n}`);});
+  });
+  lines.push('');lines.push('FULL POST LOG');lines.push('-'.repeat(30));
+  [...list].sort((a,b)=>b.date.localeCompare(a.date)).forEach(p=>{
+    lines.push(`[${p.date}] ${p.member} | ${p.acctName||'Acc '+p.account} | ${CAT[p.category].label}`);
+    lines.push(`   "${p.desc}"`);lines.push(`   ${p.link}`);lines.push('');
+  });
+  lines.push('='.repeat(54));lines.push('End of Report');
+  rpTxt=lines.join('\n');
+  document.getElementById('rpPreview').textContent=rpTxt;
+  renderReport();
+}
+function copyReport(){
+  if(!rpTxt)genReport();
+  navigator.clipboard.writeText(rpTxt).then(()=>toast('📋 Report copied to clipboard!'));
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+document.getElementById('lDate').value=today();
+document.getElementById('cDate').value=today();
+document.getElementById('hdrDate').textContent=fmtLong(new Date());
+</script>
+</body>
+</html>

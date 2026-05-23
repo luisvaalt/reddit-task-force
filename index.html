@@ -160,6 +160,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .fl{display:block;font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
 .fc{width:100%;padding:9px 11px;border:1.5px solid var(--g200);border-radius:7px;font-size:13px;color:var(--g800);background:#fff;transition:border-color .15s;outline:none}
 .fc:focus{border-color:var(--primary)}
+input[type="date"].fc{-webkit-appearance:none;appearance:none;min-height:0;line-height:normal}
 .sbtn{background:var(--primary);color:#fff;border:none;border-radius:7px;padding:11px 22px;font-size:13px;font-weight:700;cursor:pointer;width:100%;transition:all .15s}
 .sbtn:hover{background:var(--primary-dk)}
 .sbtn:disabled{opacity:.5;cursor:not-allowed}
@@ -637,7 +638,12 @@ let activeTab = 'today';
 // ═══════════════════════════════════════════
 //  DATE UTILS
 // ═══════════════════════════════════════════
-function iso(d){ return d.toISOString().split('T')[0] }
+function iso(d){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 function today(){ return iso(new Date()) }
 function weekNum(d){
   const dt=new Date(d); dt.setHours(0,0,0,0);

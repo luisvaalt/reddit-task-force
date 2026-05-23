@@ -728,6 +728,10 @@ function switchTab(tab, btn){
   document.getElementById('panel-'+tab).classList.add('on');
   btn.classList.add('on');
   activeTab=tab;
+  if(tab==='log'){
+    document.getElementById('lDate').value=today();
+    document.getElementById('cDate').value=today();
+  }
   refreshActiveTab();
 }
 function populateAccounts(selId, member){
@@ -939,6 +943,7 @@ function logPost(){
       document.getElementById('lMember').value='';
       document.getElementById('lAccount').innerHTML='<option value="">— Select member first —</option>';
       document.getElementById('suggestLbl').textContent='';
+      document.getElementById('lDate').value=today();
     })
     .catch(e=>toast('❌ Error saving: '+e.message))
     .finally(()=>{btn.disabled=false; btn.textContent='✓ Log This Post';});
@@ -970,6 +975,7 @@ function logComments(){
       toast(`✅ Comments marked done for ${member} (${acctName})`);
       document.getElementById('cMember').value='';
       document.getElementById('cAccount').innerHTML='<option value="">— Select member first —</option>';
+      document.getElementById('cDate').value=today();
     })
     .catch(e=>toast('❌ Error saving: '+e.message))
     .finally(()=>{btn.disabled=false; btn.textContent='✓ Mark Comments as Done';});

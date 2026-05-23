@@ -3,6 +3,7 @@
 <head>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyCyHMXXnudUvaqJkaMw30813GJsf1gZ7j0",
@@ -14,6 +15,7 @@
     appId: "1:444585819165:web:664ed98f02125b95879af4"
   };
   firebase.initializeApp(firebaseConfig);
+  firebase.auth().signInAnonymously().catch(e => console.error('Auth failed:', e));
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -671,24 +673,30 @@ function checkLoaded(){
   }
 }
 
-db.ref('posts').on('value', snap => {
-  posts = [];
-  snap.forEach(child => {
-    posts.unshift({ firebaseKey: child.key, ...child.val() });
-  });
-  dataLoaded.posts = true;
-  checkLoaded();
-  refreshActiveTab();
-});
+let _listenersAttached = false;
+firebase.auth().onAuthStateChanged(user => {
+  if (!user || _listenersAttached) return;
+  _listenersAttached = true;
 
-db.ref('comments').on('value', snap => {
-  comLogs = [];
-  snap.forEach(child => {
-    comLogs.unshift({ firebaseKey: child.key, ...child.val() });
+  db.ref('posts').on('value', snap => {
+    posts = [];
+    snap.forEach(child => {
+      posts.unshift({ firebaseKey: child.key, ...child.val() });
+    });
+    dataLoaded.posts = true;
+    checkLoaded();
+    refreshActiveTab();
   });
-  dataLoaded.comments = true;
-  checkLoaded();
-  refreshActiveTab();
+
+  db.ref('comments').on('value', snap => {
+    comLogs = [];
+    snap.forEach(child => {
+      comLogs.unshift({ firebaseKey: child.key, ...child.val() });
+    });
+    dataLoaded.comments = true;
+    checkLoaded();
+    refreshActiveTab();
+  });
 });
 
 function refreshActiveTab(){
